@@ -1,24 +1,52 @@
-import { createContext, useContext, useState, useEffect, Children } from "react";
+import { createContext, useContext, useState, useEffect } from "react";
 
-const AppContext = createContext()
+const AppContext = createContext();
 
-export const AppProvider = ({children}) => {
-    const [isDarkTheme , setIsDarkTheme] = useState(false)
-
-    const toggleDarkTheme = () => {
-        const newDarkTheme = !isDarkTheme
-        setIsDarkTheme(newDarkTheme)
-        const body = document.querySelector('body')
-   body.classList.toggle('dark-theme', newDarkTheme);
-   console.log(body);
-   
+const getInitialDarkMode = () => {
+  if (typeof window !== "undefined") {
+    const prefersDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const storedDarkMode = localStorage.getItem('darkTheme');
+    
+    // If no preference is stored, use the system preference
+    if (storedDarkMode === null) {
+      return prefersDarkMode;
     }
 
-    return(
-        <AppContext.Provider value={{isDarkTheme, toggleDarkTheme}}>
-            {children}
-        </AppContext.Provider>
-    )
-}
+    // Convert the stored value to a boolean
+    return storedDarkMode === 'true';
+  }
 
-export const useGlobalContext = () => useContext(AppContext)
+  // Default to light mode for SSR or if window is undefined
+  return false;
+};
+
+export const AppProvider = ({ children }) => {
+  const [isDarkTheme, setIsDarkTheme] = useState(getInitialDarkMode());
+  const [searchTerm, setSearchTerm] = useState('office'); // Neutral search term
+
+  const toggleDarkTheme = () => {
+    const newDarkTheme = !isDarkTheme;
+    setIsDarkTheme(newDarkTheme);
+
+    // Add or remove dark theme class on the body
+    document.body.classList.toggle('dark-theme', newDarkTheme);
+
+    // Store the user's preference in localStorage
+    localStorage.setItem('darkTheme', newDarkTheme);
+  };
+
+  useEffect(() => {
+    // Add or remove dark theme class on the body when the theme changes
+    document.body.classList.toggle('dark-theme', isDarkTheme);
+  }, [isDarkTheme]);
+
+  return (
+    <AppContext.Provider
+      value={{ isDarkTheme, toggleDarkTheme, searchTerm, setSearchTerm }}
+    >
+      {children}
+    </AppContext.Provider>
+  );
+};
+
+export const useGlobalContext = () => useContext(AppContext);
